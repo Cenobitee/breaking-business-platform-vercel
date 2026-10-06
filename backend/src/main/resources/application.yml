@@ -2,9 +2,9 @@ spring:
   application:
     name: breaking-business-backend
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/financial_platform}
-    username: ${DB_USERNAME:financial_app}
-    password: ${DB_PASSWORD:change-me}
+    url: ${NEON_JDBC_URL:${DB_URL:jdbc:postgresql://localhost:5432/financial_platform}}
+    username: ${NEON_DB_USERNAME:${DB_USERNAME:financial_app}}
+    password: ${NEON_DB_PASSWORD:${DB_PASSWORD:change-me}}
     hikari:
       maximum-pool-size: 2
       minimum-idle: 0
