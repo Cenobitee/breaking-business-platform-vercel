@@ -126,13 +126,72 @@ The repository includes [`.env.example`](.env.example) as a reference for deploy
 | `DB_PASSWORD` | Database password |
 | `JWT_SECRET` | Secret used to sign access tokens; use at least 32 random characters |
 | `JWT_TTL_MINUTES` | Access-token lifetime in minutes |
-| `CORS_ALLOWED_ORIGIN` | Allowed frontend origin, such as `https://app.example.com` |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated frontend origins, such as local development and the Vercel production URL |
 | `PASSWORD_RESET_EXPOSE_TOKEN` | Development-only option for returning reset tokens in API responses |
 | `SEED_DEFAULT_USERS` | Enables or disables sample account creation |
 | `SEED_DEFAULT_PASSWORD` | Password used only when sample account creation is enabled |
 | `VITE_API_URL` | Frontend API base URL, defaulting to `http://localhost:8080/api` |
 
 For a non-local backend start, set a secure `JWT_SECRET` and the database variables before running Spring Boot. Keep real secrets outside Git and never commit a populated `.env` file.
+
+## Public deployment: Vercel + Render
+
+This deployment repository is configured for the following architecture:
+
+```text
+Browser → Vercel React frontend → Render Spring Boot API → Render PostgreSQL
+```
+
+### 1. Deploy the backend and database on Render
+
+1. Sign in to Render and choose **New > Blueprint**.
+2. Connect this GitHub repository.
+3. Render reads the root [`render.yaml`](render.yaml) and creates:
+   - `breaking-business-api`, built from [`backend/Dockerfile`](backend/Dockerfile)
+   - `breaking-business-db`, a PostgreSQL database
+4. When prompted for `CORS_ALLOWED_ORIGINS`, initially enter `http://localhost:5173`.
+5. Wait for Flyway to finish the database migrations and for the API deployment to become live.
+6. Copy the public API hostname, for example `https://breaking-business-api.onrender.com`.
+
+The Render blueprint generates the JWT secret and disables demo users and password-reset token exposure. Do not enable the local Spring profile in production.
+
+### 2. Deploy the frontend on Vercel
+
+1. In Vercel, choose **Add New > Project** and import this GitHub repository.
+2. Set **Root Directory** to `frontend`.
+3. Confirm these build settings:
+   - Framework preset: **Vite**
+   - Build command: `npm run build`
+   - Output directory: `dist`
+4. Add this Production environment variable:
+
+   ```env
+   VITE_API_URL=https://YOUR-RENDER-API.onrender.com/api
+   ```
+
+5. Deploy the project. [`frontend/vercel.json`](frontend/vercel.json) ensures React Router URLs work when opened or refreshed directly.
+6. Copy the final production URL, for example `https://breaking-business-platform-vercel.vercel.app`.
+
+### 3. Finish CORS configuration
+
+Return to the Render service and change `CORS_ALLOWED_ORIGINS` to the exact deployed frontend origins:
+
+```env
+CORS_ALLOWED_ORIGINS=http://localhost:5173,https://YOUR-PROJECT.vercel.app
+```
+
+Save the setting and redeploy the backend. This keeps local frontend development working while allowing the public Vercel application to call the API.
+
+### 4. Create the first production Owner
+
+Open the Vercel URL and use the registration page to create the first real Owner and business. Production does not create the sample local accounts.
+
+### Production notes
+
+- The payment page currently records the investment workflow but is not connected to a real payment gateway.
+- Use a paid database plan with backups before storing important real business or investment data.
+- Uploaded investment images are stored in PostgreSQL; move them to object storage before supporting large public upload volumes.
+- Add email delivery, rate limiting, monitoring, privacy terms, and relevant legal review before accepting real public investments.
 
 ## Useful commands
 

@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: breaking-business-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    autoDeployTrigger: commit
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: breaking-business-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_TTL_MINUTES
+        value: "480"
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: PASSWORD_RESET_EXPOSE_TOKEN
+        value: "false"
+      - key: SEED_DEFAULT_USERS
+        value: "false"
+      - key: JAVA_OPTS
+        value: -XX:MaxRAMPercentage=75.0
+
+databases:
+  - name: breaking-business-db
+    plan: free
+    region: singapore
+    databaseName: financial_platform
+    user: financial_app
+    postgresMajorVersion: "16"
