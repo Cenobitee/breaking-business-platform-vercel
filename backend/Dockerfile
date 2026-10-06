@@ -16,4 +16,4 @@ RUN chown appuser:appuser /app/app.jar
 USER appuser
 EXPOSE 8080
 
-ENTRYPOINT ["sh", "-c", "if [ -n \"$DATABASE_URL\" ]; then export DB_URL=\"jdbc:$DATABASE_URL\"; fi; exec java ${JAVA_OPTS:-} -jar /app/app.jar"]
+ENTRYPOINT ["sh", "-c", "if [ -n \"$DATABASE_URL\" ]; then export DB_URL=\"jdbc:$DATABASE_URL\"; fi; exec java ${JAVA_OPTS:--XX:+UseSerialGC -XX:MaxRAMPercentage=62 -XX:InitialRAMPercentage=15 -XX:MaxMetaspaceSize=52m -Xss256k -Dspring.main.lazy-initialization=true -Dspring.jmx.enabled=false -Dserver.tomcat.threads.max=12 -Dserver.tomcat.threads.min-spare=1} -jar /app/app.jar"]

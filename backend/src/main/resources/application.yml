@@ -5,6 +5,9 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/financial_platform}
     username: ${DB_USERNAME:financial_app}
     password: ${DB_PASSWORD:change-me}
+    hikari:
+      maximum-pool-size: 2
+      minimum-idle: 0
   jpa:
     hibernate:
       ddl-auto: validate
