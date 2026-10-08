@@ -64,8 +64,8 @@ Install these tools first:
 ### 1. Clone the project
 
 ```bash
-git clone https://github.com/Cenobitee/breaking-business-platform.git
-cd breaking-business-platform
+git clone https://github.com/Cenobitee/breaking-business-platform-vercel.git
+cd breaking-business-platform-vercel
 ```
 
 ### 2. Start PostgreSQL
@@ -134,26 +134,41 @@ The repository includes [`.env.example`](.env.example) as a reference for deploy
 
 For a non-local backend start, set a secure `JWT_SECRET` and the database variables before running Spring Boot. Keep real secrets outside Git and never commit a populated `.env` file.
 
-## Public deployment: Vercel + Render
+## Live public deployment: Vercel + Railway
 
 This deployment repository is configured for the following architecture:
 
 ```text
-Browser → Vercel React frontend → Render Spring Boot API → Render PostgreSQL
+Browser → Vercel React frontend → Railway Spring Boot API → Railway PostgreSQL
 ```
 
-### 1. Deploy the backend and database on Render
+Current public services:
 
-1. Sign in to Render and choose **New > Blueprint**.
-2. Connect this GitHub repository.
-3. Render reads the root [`render.yaml`](render.yaml) and creates:
-   - `breaking-business-api`, built from [`backend/Dockerfile`](backend/Dockerfile)
-   - `breaking-business-db`, a PostgreSQL database
-4. When prompted for `CORS_ALLOWED_ORIGINS`, initially enter `http://localhost:5173`.
-5. Wait for Flyway to finish the database migrations and for the API deployment to become live.
-6. Copy the public API hostname, for example `https://breaking-business-api.onrender.com`.
+- Frontend: <https://breaking-business-platform-vercel-f.vercel.app>
+- API: <https://breaking-business-api-production.up.railway.app>
+- Source: <https://github.com/Cenobitee/breaking-business-platform-vercel>
 
-The Render blueprint generates the JWT secret and disables demo users and password-reset token exposure. Do not enable the local Spring profile in production.
+### 1. Deploy the backend and database on Railway
+
+1. Create a Railway project from this repository and select [`backend/Dockerfile`](backend/Dockerfile) for the API service.
+2. Add a PostgreSQL service named `breaking-business-db`.
+3. Generate a Railway domain for the API service.
+4. Configure these API variables (Railway reference variables keep credentials out of Git):
+
+   ```env
+   DB_URL=jdbc:postgresql://${{breaking-business-db.PGHOST}}:${{breaking-business-db.PGPORT}}/${{breaking-business-db.PGDATABASE}}
+   DB_USERNAME=${{breaking-business-db.PGUSER}}
+   DB_PASSWORD=${{breaking-business-db.PGPASSWORD}}
+   CORS_ALLOWED_ORIGINS=https://breaking-business-platform-vercel-f.vercel.app
+   JWT_SECRET=replace-with-a-long-random-production-secret
+   JWT_TTL_MINUTES=120
+   SEED_DEFAULT_USERS=false
+   PASSWORD_RESET_EXPOSE_TOKEN=false
+   ```
+
+5. Deploy and wait for Flyway to apply all migrations. A request to `/api/auth/me` without a token should return HTTP `401`, confirming that the API is online and protected.
+
+Use Railway's variable generator for `JWT_SECRET`, and keep demo users and password-reset token exposure disabled. Do not enable the local Spring profile in production.
 
 ### 2. Deploy the frontend on Vercel
 
@@ -163,24 +178,24 @@ The Render blueprint generates the JWT secret and disables demo users and passwo
    - Framework preset: **Vite**
    - Build command: `npm run build`
    - Output directory: `dist`
-4. Add this Production environment variable:
+4. Add this **Config** variable to Production and Preview:
 
    ```env
-   VITE_API_URL=https://YOUR-RENDER-API.onrender.com/api
+   VITE_API_URL=https://breaking-business-api-production.up.railway.app/api
    ```
 
 5. Deploy the project. [`frontend/vercel.json`](frontend/vercel.json) ensures React Router URLs work when opened or refreshed directly.
-6. Copy the final production URL, for example `https://breaking-business-platform-vercel.vercel.app`.
+6. Redeploy after changing an environment variable. The live frontend is <https://breaking-business-platform-vercel-f.vercel.app>.
 
 ### 3. Finish CORS configuration
 
-Return to the Render service and change `CORS_ALLOWED_ORIGINS` to the exact deployed frontend origins:
+Return to the Railway API service and set `CORS_ALLOWED_ORIGINS` to the exact deployed frontend origin:
 
 ```env
-CORS_ALLOWED_ORIGINS=http://localhost:5173,https://YOUR-PROJECT.vercel.app
+CORS_ALLOWED_ORIGINS=https://breaking-business-platform-vercel-f.vercel.app
 ```
 
-Save the setting and redeploy the backend. This keeps local frontend development working while allowing the public Vercel application to call the API.
+Save the setting and redeploy the backend. Add `http://localhost:5173` as a comma-separated origin only if the public API also needs to serve a local frontend.
 
 ### 4. Create the first production Owner
 
