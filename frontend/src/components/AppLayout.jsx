@@ -20,6 +20,7 @@ export function AppLayout() {
   const [businessProfile, setBusinessProfile] = useState(null)
   const [personalProfile, setPersonalProfile] = useState(null)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false)
   const [investorCycles, setInvestorCycles] = useState([])
   const notificationMenuRef = useRef(null)
 
@@ -111,7 +112,11 @@ export function AppLayout() {
   return (
     <div className="app-shell">
       <div className="manager-layout">
-        <aside className="manager-sidebar" aria-label={`${roleTitle} navigation`}>
+        <aside
+          className={`manager-sidebar${mobileNavigationOpen ? ' mobile-open' : ''}`}
+          aria-label={`${roleTitle} navigation`}
+          id="mobile-workspace-navigation"
+        >
           <Link className="manager-workspace" to={homePath} aria-label="Open dashboard">
             <span className="manager-workspace-logo" aria-hidden="true">
               {businessProfile?.logoDataUrl ? (
@@ -127,7 +132,7 @@ export function AppLayout() {
           </Link>
 
           <p className="manager-nav-label">{isOwner ? 'Owner workspace' : 'Navigation'}</p>
-          <nav className="manager-side-nav">
+          <nav className="manager-side-nav" onClick={() => setMobileNavigationOpen(false)}>
             {!isInvestor && (
               <NavLink to="/operations" end>
                 <span aria-hidden="true">⌂</span>Dashboard
@@ -268,8 +273,26 @@ export function AppLayout() {
             </div>
           </div>
         </aside>
+        {mobileNavigationOpen && (
+          <button
+            className="mobile-navigation-backdrop"
+            type="button"
+            aria-label="Close navigation"
+            onClick={() => setMobileNavigationOpen(false)}
+          />
+        )}
         <div className="manager-content-column">
           <header className="manager-utility-header">
+            <button
+              className="mobile-navigation-toggle"
+              type="button"
+              aria-label={mobileNavigationOpen ? 'Close navigation' : 'Open navigation'}
+              aria-controls="mobile-workspace-navigation"
+              aria-expanded={mobileNavigationOpen}
+              onClick={() => setMobileNavigationOpen((open) => !open)}
+            >
+              <span aria-hidden="true">{mobileNavigationOpen ? '×' : '☰'}</span>
+            </button>
             <div className="manager-header-context">
               <small>Workspace</small>
               <strong>{businessProfile?.name || user.businessName || 'Business'}</strong>
