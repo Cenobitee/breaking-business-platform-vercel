@@ -67,7 +67,7 @@ public class AuthService {
     this.rememberRefreshTtlDays = rememberRefreshTtlDays;
   }
 
-  @Transactional(readOnly = true)
+  @Transactional
   public AuthSession login(LoginRequest request) {
     String email = request.email().trim().toLowerCase();
     authenticationManager.authenticate(
