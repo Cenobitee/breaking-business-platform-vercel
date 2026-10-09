@@ -24,6 +24,19 @@ const plans = [
   },
 ]
 
+const BB_ADMIN_WHATSAPP = '8801576686100'
+
+function whatsappUrl(plan) {
+  const message = [
+    'Hello BB Admin,',
+    '',
+    `I want to activate the ${plan.name} plan ($${plan.price} for 30 days) for my Breaking Business workspace.`,
+    'Please send me the payment instructions and activate access after verifying my payment.',
+  ].join('\n')
+
+  return `https://wa.me/${BB_ADMIN_WHATSAPP}?text=${encodeURIComponent(message)}`
+}
+
 export function SubscriptionPricing() {
   return (
     <section className="subscription-pricing" aria-labelledby="subscription-pricing-title">
@@ -77,18 +90,21 @@ export function SubscriptionPricing() {
                 <small>Renew manually after 30 days. No automatic charge.</small>
               </div>
             </div>
-            <button
-              type="button"
-              disabled
-              title="Secure subscription checkout is not connected yet"
+            <a
+              className="subscription-whatsapp-action"
+              href={whatsappUrl(plan)}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`Contact BB Admin on WhatsApp for the ${plan.name} plan`}
             >
-              Payment setup required
-            </button>
+              <span aria-hidden="true">◉</span> Continue on WhatsApp
+            </a>
           </article>
         ))}
       </div>
       <p className="subscription-payment-disclosure">
-        Plan selection will become available after a verified payment provider is connected.
+        Contact BB Admin, complete payment using the provided instructions, and access will be
+        activated after payment verification.
       </p>
     </section>
   )

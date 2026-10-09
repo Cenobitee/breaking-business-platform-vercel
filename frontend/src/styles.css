@@ -4985,17 +4985,29 @@ th {
 .subscription-renewal-note small {
   color: #65776d;
 }
-.subscription-plan-card > button {
+.subscription-whatsapp-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   width: 100%;
   margin-top: 0.85rem;
+  padding: 0.8rem 1rem;
   border-radius: 12px;
+  color: #fff;
+  background: #168a4a;
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-decoration: none;
+  transition:
+    transform 150ms ease,
+    background 150ms ease,
+    box-shadow 150ms ease;
 }
-.subscription-plan-card > button:disabled {
-  color: #5e7167;
-  border-color: #d1ddd5;
-  background: #e9efeb;
-  cursor: not-allowed;
-  opacity: 1;
+.subscription-whatsapp-action:hover {
+  background: #10723c;
+  box-shadow: 0 10px 22px rgba(22, 138, 74, 0.2);
+  transform: translateY(-1px);
 }
 .subscription-payment-disclosure {
   margin: 1rem 0 0;
