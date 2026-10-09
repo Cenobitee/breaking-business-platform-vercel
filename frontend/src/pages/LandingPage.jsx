@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { SubscriptionPricing } from '../components/SubscriptionPricing'
 
 function dashboardFor(role) {
   return role === 'INVESTOR' ? '/investor' : '/operations'
@@ -19,6 +20,7 @@ export function LandingPage() {
           <nav>
             <a href="#home">Home</a>
             <a href="#features">Features</a>
+            <a href="#pricing">Pricing</a>
             <a href="#roles">Roles</a>
             <a href="#about">About</a>
           </nav>
@@ -108,6 +110,10 @@ export function LandingPage() {
           </article>
         </div>
       </section>
+
+      <div className="landing-pricing" id="pricing">
+        <SubscriptionPricing />
+      </div>
 
       <section className="landing-roles" id="roles">
         <div>

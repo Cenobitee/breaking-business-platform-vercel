@@ -435,6 +435,19 @@ p {
   color: #fff;
   background: #183324;
 }
+
+.landing-pricing {
+  width: min(1180px, calc(100% - 3rem));
+  margin: 0 auto;
+  padding: 6rem 0 2rem;
+  scroll-margin-top: 1.5rem;
+}
+
+.landing-pricing .subscription-pricing {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(238, 166, 84, 0.16), transparent 34%),
+    linear-gradient(145deg, #fffefa, #f1f7f2);
+}
 .landing-roles h2 {
   color: #fff;
 }
@@ -7173,6 +7186,10 @@ th {
 }
 
 @media (max-width: 480px) {
+  .landing-pricing {
+    width: calc(100% - 1rem);
+    padding-top: 3.5rem;
+  }
   .subscription-pricing {
     padding: 1rem;
     border-radius: 18px;
