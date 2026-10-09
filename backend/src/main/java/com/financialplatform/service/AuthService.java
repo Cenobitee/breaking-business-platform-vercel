@@ -7,9 +7,11 @@ import com.financialplatform.api.dto.RegisterRequest;
 import com.financialplatform.domain.AppUser;
 import com.financialplatform.domain.Business;
 import com.financialplatform.domain.PasswordResetToken;
+import com.financialplatform.domain.RefreshSession;
 import com.financialplatform.domain.Role;
 import com.financialplatform.repository.BusinessRepository;
 import com.financialplatform.repository.PasswordResetTokenRepository;
+import com.financialplatform.repository.RefreshSessionRepository;
 import com.financialplatform.repository.UserRepository;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -31,10 +33,13 @@ public class AuthService {
   private final UserRepository users;
   private final BusinessRepository businesses;
   private final PasswordResetTokenRepository resetTokens;
+  private final RefreshSessionRepository refreshSessions;
   private final TokenService tokenService;
   private final PasswordEncoder passwordEncoder;
   private final long resetTtlMinutes;
   private final boolean exposeResetToken;
+  private final long refreshTtlHours;
+  private final long rememberRefreshTtlDays;
   private final SecureRandom secureRandom = new SecureRandom();
 
   public AuthService(
@@ -42,31 +47,37 @@ public class AuthService {
       UserRepository users,
       BusinessRepository businesses,
       PasswordResetTokenRepository resetTokens,
+      RefreshSessionRepository refreshSessions,
       TokenService tokenService,
       PasswordEncoder passwordEncoder,
       @Value("${app.password-reset.ttl-minutes:30}") long resetTtlMinutes,
-      @Value("${app.password-reset.expose-token:false}") boolean exposeResetToken) {
+      @Value("${app.password-reset.expose-token:false}") boolean exposeResetToken,
+      @Value("${app.jwt.refresh-ttl-hours:8}") long refreshTtlHours,
+      @Value("${app.jwt.remember-refresh-ttl-days:30}") long rememberRefreshTtlDays) {
     this.authenticationManager = authenticationManager;
     this.users = users;
     this.businesses = businesses;
     this.resetTokens = resetTokens;
+    this.refreshSessions = refreshSessions;
     this.tokenService = tokenService;
     this.passwordEncoder = passwordEncoder;
     this.resetTtlMinutes = resetTtlMinutes;
     this.exposeResetToken = exposeResetToken;
+    this.refreshTtlHours = refreshTtlHours;
+    this.rememberRefreshTtlDays = rememberRefreshTtlDays;
   }
 
   @Transactional(readOnly = true)
-  public AuthResponse login(LoginRequest request) {
+  public AuthSession login(LoginRequest request) {
     String email = request.email().trim().toLowerCase();
     authenticationManager.authenticate(
         new UsernamePasswordAuthenticationToken(email, request.password()));
     AppUser user = users.findByEmailIgnoreCase(email).orElseThrow();
-    return authenticatedResponse(user);
+    return authenticatedSession(user, request.rememberMe());
   }
 
   @Transactional
-  public AuthResponse register(RegisterRequest request) {
+  public AuthSession register(RegisterRequest request) {
     String email = request.email().trim().toLowerCase();
     if (users.findByEmailIgnoreCase(email).isPresent()) {
       throw new IllegalArgumentException("An account with this email already exists");
@@ -80,7 +91,42 @@ public class AuthService {
                 passwordEncoder.encode(request.password()),
                 Role.OWNER,
                 business));
-    return authenticatedResponse(user);
+    return authenticatedSession(user, false);
+  }
+
+  @Transactional
+  public AuthSession refresh(String rawRefreshToken) {
+    RefreshSession current =
+        refreshSessions
+            .findByTokenHashAndRevokedAtIsNull(hashToken(rawRefreshToken))
+            .orElseThrow(() -> new IllegalArgumentException("Refresh session is invalid"));
+    Instant now = Instant.now();
+    AppUser user = current.getUser();
+    if (current.getExpiresAt().isBefore(now) || !user.isActive() || user.isProfileDeleted()) {
+      current.revoke(now);
+      throw new IllegalArgumentException("Refresh session has expired");
+    }
+    long remainingSeconds = current.getExpiresAt().getEpochSecond() - now.getEpochSecond();
+    boolean remembered = remainingSeconds > refreshTtlHours * 60 * 60;
+    current.revoke(now);
+    return authenticatedSession(user, remembered);
+  }
+
+  @Transactional
+  public void logout(String rawRefreshToken) {
+    if (rawRefreshToken == null || rawRefreshToken.isBlank()) return;
+    refreshSessions
+        .findByTokenHashAndRevokedAtIsNull(hashToken(rawRefreshToken))
+        .ifPresent(session -> session.revoke(Instant.now()));
+  }
+
+  @Transactional(readOnly = true)
+  public AuthResponse.UserView currentUser(String email) {
+    return users
+        .findByEmailIgnoreCase(email)
+        .filter(user -> user.isActive() && !user.isProfileDeleted())
+        .map(this::userView)
+        .orElseThrow(() -> new IllegalArgumentException("Account is unavailable"));
   }
 
   @Transactional
@@ -126,19 +172,32 @@ public class AuthService {
     token.markUsed(now);
   }
 
-  private AuthResponse authenticatedResponse(AppUser user) {
-    TokenService.IssuedToken token = tokenService.issue(user);
-    return new AuthResponse(
-        token.value(),
-        "Bearer",
-        token.expiresInSeconds(),
-        new AuthResponse.UserView(
-            user.getId(),
-            user.getFullName(),
-            user.getEmail(),
-            user.getRole(),
-            user.getBusiness().getId(),
-            user.getBusiness().getName()));
+  private AuthSession authenticatedSession(AppUser user, boolean rememberMe) {
+    TokenService.IssuedToken accessToken = tokenService.issue(user);
+    String refreshToken = generateToken();
+    long refreshSeconds =
+        rememberMe
+            ? rememberRefreshTtlDays * 24 * 60 * 60
+            : refreshTtlHours * 60 * 60;
+    refreshSessions.save(
+        new RefreshSession(
+            user, hashToken(refreshToken), Instant.now().plus(refreshSeconds, ChronoUnit.SECONDS)));
+    return new AuthSession(
+        new AuthResponse(accessToken.expiresInSeconds(), userView(user)),
+        accessToken.value(),
+        refreshToken,
+        refreshSeconds,
+        rememberMe);
+  }
+
+  private AuthResponse.UserView userView(AppUser user) {
+    return new AuthResponse.UserView(
+        user.getId(),
+        user.getFullName(),
+        user.getEmail(),
+        user.getRole(),
+        user.getBusiness().getId(),
+        user.getBusiness().getName());
   }
 
   private String generateToken() {
@@ -156,4 +215,11 @@ public class AuthService {
       throw new IllegalStateException("SHA-256 is unavailable", exception);
     }
   }
+
+  public record AuthSession(
+      AuthResponse response,
+      String accessToken,
+      String refreshToken,
+      long refreshExpiresInSeconds,
+      boolean remembered) {}
 }

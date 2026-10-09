@@ -29,10 +29,13 @@ import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtClaimValidator;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
+import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -102,9 +105,13 @@ public class SecurityConfig {
                                 "invalid_token",
                                 "The account is inactive or no longer exists",
                                 null)));
+    OAuth2TokenValidator<org.springframework.security.oauth2.jwt.Jwt> audienceValidator =
+        new JwtClaimValidator<List<String>>(
+            "aud", audience -> audience != null && audience.contains("breaking-business-api"));
     decoder.setJwtValidator(
         new DelegatingOAuth2TokenValidator<>(
             JwtValidators.createDefaultWithIssuer("financial-transparency-platform"),
+            audienceValidator,
             accountValidator));
     return decoder;
   }
@@ -132,6 +139,8 @@ public class SecurityConfig {
                 auth.requestMatchers(
                         "/api/auth/login",
                         "/api/auth/register",
+                        "/api/auth/refresh",
+                        "/api/auth/logout",
                         "/api/auth/forgot-password",
                         "/api/auth/reset-password",
                         "/error")
@@ -197,8 +206,27 @@ public class SecurityConfig {
                     .hasAnyRole("OWNER", "INVESTOR")
                     .anyRequest()
                     .authenticated())
-        .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(converter)))
+        .oauth2ResourceServer(
+            oauth ->
+                oauth
+                    .bearerTokenResolver(cookieBearerTokenResolver())
+                    .jwt(jwt -> jwt.jwtAuthenticationConverter(converter)))
         .build();
+  }
+
+  @Bean
+  BearerTokenResolver cookieBearerTokenResolver() {
+    DefaultBearerTokenResolver authorizationHeader = new DefaultBearerTokenResolver();
+    return request -> {
+      if (request.getCookies() != null) {
+        for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
+          if ("bb_access".equals(cookie.getName()) && !cookie.getValue().isBlank()) {
+            return cookie.getValue();
+          }
+        }
+      }
+      return authorizationHeader.resolve(request);
+    };
   }
 
   @Bean
@@ -212,6 +240,7 @@ public class SecurityConfig {
             .toList());
     config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+    config.setAllowCredentials(true);
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/api/**", config);
     return source;

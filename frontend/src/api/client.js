@@ -1,24 +1,25 @@
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api'
+const API_URL = import.meta.env.DEV
+  ? (import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api')
+  : '/api'
 
-export async function apiRequest(path, options = {}) {
-  const token =
-    sessionStorage.getItem('financial-platform-token') ||
-    localStorage.getItem('financial-platform-token')
+async function send(path, options = {}, allowRefresh = true) {
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
   })
 
-  if (response.status === 401 && path !== '/auth/login') {
-    ;[sessionStorage, localStorage].forEach((storage) => {
-      storage.removeItem('financial-platform-token')
-      storage.removeItem('financial-platform-user')
-      storage.removeItem('financial-platform-token-expires-at')
+  const publicAuthRequest = ['/auth/login', '/auth/register', '/auth/refresh'].includes(path)
+  if (response.status === 401 && allowRefresh && !publicAuthRequest) {
+    const refreshed = await fetch(`${API_URL}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
     })
+    if (refreshed.ok) return send(path, options, false)
     window.dispatchEvent(new Event('financial-platform-auth-expired'))
   }
 
@@ -29,4 +30,8 @@ export async function apiRequest(path, options = {}) {
 
   if (response.status === 204) return null
   return response.json()
+}
+
+export function apiRequest(path, options = {}) {
+  return send(path, options)
 }

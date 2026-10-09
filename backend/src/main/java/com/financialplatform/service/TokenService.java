@@ -27,14 +27,13 @@ public class TokenService {
     JwtClaimsSet claims =
         JwtClaimsSet.builder()
             .issuer("financial-transparency-platform")
+            .audience(java.util.List.of("breaking-business-api"))
             .issuedAt(now)
             .expiresAt(expiresAt)
             .subject(user.getEmail())
             .claim("userId", user.getId())
-            .claim("name", user.getFullName())
             .claim("role", user.getRole().name())
             .claim("businessId", user.getBusiness().getId())
-            .claim("businessName", user.getBusiness().getName())
             .build();
     return new IssuedToken(
         encoder

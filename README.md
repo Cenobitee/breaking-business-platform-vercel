@@ -45,7 +45,7 @@ Breaking Business is a full-stack business operations and investment-transparenc
 
 Each Owner creates a separate business. Managers, Investors, products, sales, expenses, messages, analytics, investment posts, and investment transactions are restricted to that business.
 
-The backend issues signed JWT access tokens. Selecting **Remember me** stores the authenticated session in browser local storage; otherwise, it lasts only for the browser session. Disabling or deleting a managed account prevents its existing JWT from continuing to access protected APIs.
+The backend issues short-lived, signed JWT access tokens in `HttpOnly`, `Secure`, `SameSite=Lax` cookies. Tokens are signature-verified with a pinned algorithm and validated for expiry, issuer, audience, and active-account status. Rotating refresh tokens are stored only as SHA-256 hashes in PostgreSQL and are revoked on logout. **Remember me** extends only the server-backed refresh session; authentication tokens are never placed in browser local storage.
 
 Investment projections are estimates rather than guaranteed returns. Product-linked verified sales minus direct product costs determine actual profit. The Owner keeps 50% of that profit, while the other 50% forms the Investor pool and is distributed proportionally by purchased project units. Each Investor's payout remains limited by the maximum earnings percentage configured on the post, and funds remain locked until the investment tenure ends.
 
@@ -126,6 +126,9 @@ The repository includes [`.env.example`](.env.example) as a reference for deploy
 | `DB_PASSWORD` | Database password |
 | `JWT_SECRET` | Secret used to sign access tokens; use at least 32 random characters |
 | `JWT_TTL_MINUTES` | Access-token lifetime in minutes |
+| `REFRESH_TOKEN_TTL_HOURS` | Non-persistent refresh-session lifetime in hours |
+| `REMEMBER_REFRESH_TOKEN_TTL_DAYS` | Remember-me refresh-session lifetime in days |
+| `AUTH_COOKIE_SECURE` | Requires HTTPS for authentication cookies; use `false` only for local HTTP development |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated frontend origins, such as local development and the Vercel production URL |
 | `PASSWORD_RESET_EXPOSE_TOKEN` | Development-only option for returning reset tokens in API responses |
 | `SEED_DEFAULT_USERS` | Enables or disables sample account creation |
@@ -161,7 +164,10 @@ Current public services:
    DB_PASSWORD=${{breaking-business-db.PGPASSWORD}}
    CORS_ALLOWED_ORIGINS=https://breaking-business-platform-vercel-f.vercel.app
    JWT_SECRET=replace-with-a-long-random-production-secret
-   JWT_TTL_MINUTES=120
+   JWT_TTL_MINUTES=15
+   REFRESH_TOKEN_TTL_HOURS=8
+   REMEMBER_REFRESH_TOKEN_TTL_DAYS=30
+   AUTH_COOKIE_SECURE=true
    SEED_DEFAULT_USERS=false
    PASSWORD_RESET_EXPOSE_TOKEN=false
    ```
@@ -178,14 +184,8 @@ Use Railway's variable generator for `JWT_SECRET`, and keep demo users and passw
    - Framework preset: **Vite**
    - Build command: `npm run build`
    - Output directory: `dist`
-4. Add this **Config** variable to Production and Preview:
-
-   ```env
-   VITE_API_URL=https://breaking-business-api-production.up.railway.app/api
-   ```
-
-5. Deploy the project. [`frontend/vercel.json`](frontend/vercel.json) ensures React Router URLs work when opened or refreshed directly.
-6. Redeploy after changing an environment variable. The live frontend is <https://breaking-business-platform-vercel-f.vercel.app>.
+4. Deploy the project. [`frontend/vercel.json`](frontend/vercel.json) proxies `/api` to Railway so secure `SameSite=Lax` cookies remain first-party and ensures React Router URLs work when opened or refreshed directly.
+5. Redeploy after changing an environment variable. The live frontend is <https://breaking-business-platform-vercel-f.vercel.app>.
 
 ### 3. Finish CORS configuration
 

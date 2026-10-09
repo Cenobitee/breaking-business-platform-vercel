@@ -1,6 +1,7 @@
 app:
   jwt:
     secret: ${JWT_SECRET:local-development-secret-change-before-deploying}
+    cookie-secure: false
   password-reset:
     expose-token: ${PASSWORD_RESET_EXPOSE_TOKEN:true}
   seed:

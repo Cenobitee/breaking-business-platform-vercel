@@ -2,78 +2,35 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { apiRequest } from '../api/client'
 
 const AuthContext = createContext(null)
-const TOKEN_KEY = 'financial-platform-token'
-const USER_KEY = 'financial-platform-user'
-const EXPIRY_KEY = 'financial-platform-token-expires-at'
-
-function clearStoredAuthentication() {
+function removeLegacyAuthentication() {
   ;[sessionStorage, localStorage].forEach((storage) => {
-    storage.removeItem(TOKEN_KEY)
-    storage.removeItem(USER_KEY)
-    storage.removeItem(EXPIRY_KEY)
+    storage.removeItem('financial-platform-token')
+    storage.removeItem('financial-platform-user')
+    storage.removeItem('financial-platform-token-expires-at')
   })
 }
 
-function authenticationStorage() {
-  if (sessionStorage.getItem(TOKEN_KEY)) return sessionStorage
-  if (localStorage.getItem(TOKEN_KEY)) return localStorage
-  return null
-}
-
-function readStoredUser() {
-  try {
-    const storage = authenticationStorage()
-    if (!storage) return null
-    const expiresAt = Number(storage.getItem(EXPIRY_KEY))
-    if (!expiresAt || expiresAt <= Date.now()) {
-      clearStoredAuthentication()
-      return null
-    }
-    return JSON.parse(storage.getItem(USER_KEY))
-  } catch {
-    clearStoredAuthentication()
-    return null
-  }
-}
-
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(readStoredUser)
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    removeLegacyAuthentication()
+    apiRequest('/auth/me')
+      .then(setUser)
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false))
+  }, [])
 
   useEffect(() => {
     const expire = () => {
-      clearStoredAuthentication()
       setUser(null)
     }
     window.addEventListener('financial-platform-auth-expired', expire)
     return () => window.removeEventListener('financial-platform-auth-expired', expire)
   }, [])
 
-  useEffect(() => {
-    if (!user) return undefined
-    const storage = authenticationStorage()
-    const expiresAt = Number(storage?.getItem(EXPIRY_KEY))
-    const remaining = expiresAt - Date.now()
-    if (remaining <= 0) {
-      clearStoredAuthentication()
-      setUser(null)
-      return undefined
-    }
-    const timeout = window.setTimeout(
-      () => {
-        clearStoredAuthentication()
-        setUser(null)
-      },
-      Math.min(remaining, 2_147_483_647),
-    )
-    return () => window.clearTimeout(timeout)
-  }, [user])
-
-  function storeAuthentication(response, rememberMe = false) {
-    clearStoredAuthentication()
-    const storage = rememberMe ? localStorage : sessionStorage
-    storage.setItem(TOKEN_KEY, response.accessToken)
-    storage.setItem(USER_KEY, JSON.stringify(response.user))
-    storage.setItem(EXPIRY_KEY, String(Date.now() + Number(response.expiresInSeconds) * 1000))
+  function storeAuthentication(response) {
     setUser(response.user)
     return response.user
   }
@@ -81,9 +38,9 @@ export function AuthProvider({ children }) {
   async function login(email, password, rememberMe = false) {
     const response = await apiRequest('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, rememberMe }),
     })
-    return storeAuthentication(response, rememberMe)
+    return storeAuthentication(response)
   }
 
   async function register(businessName, fullName, email, password) {
@@ -95,20 +52,22 @@ export function AuthProvider({ children }) {
     )
   }
 
-  function logout() {
-    clearStoredAuthentication()
+  async function logout() {
+    await apiRequest('/auth/logout', { method: 'POST' }).catch(() => {})
     setUser(null)
   }
 
   function updateBusinessName(businessName) {
     setUser((currentUser) => {
       const updated = { ...currentUser, businessName }
-      authenticationStorage()?.setItem(USER_KEY, JSON.stringify(updated))
       return updated
     })
   }
 
-  const value = useMemo(() => ({ user, login, register, logout, updateBusinessName }), [user])
+  const value = useMemo(
+    () => ({ user, loading, login, register, logout, updateBusinessName }),
+    [user, loading],
+  )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
