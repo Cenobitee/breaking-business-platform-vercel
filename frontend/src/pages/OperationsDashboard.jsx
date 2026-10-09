@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { apiRequest } from '../api/client'
 import { MetricCard } from '../components/MetricCard'
+import { SubscriptionPricing } from '../components/SubscriptionPricing'
 import { useAuth } from '../auth/AuthContext'
 
 const money = (value) =>
@@ -188,6 +189,7 @@ export function OperationsDashboard() {
           {notice}
         </p>
       )}
+      {user.role === 'OWNER' && <SubscriptionPricing />}
       {analytics && (
         <section className="metrics-grid" aria-label="Daily metrics">
           <MetricCard label="Revenue" value={money(analytics.revenue)} context={analytics.date} />
