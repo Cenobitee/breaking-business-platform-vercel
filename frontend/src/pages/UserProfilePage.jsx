@@ -15,6 +15,11 @@ export function UserProfilePage() {
     contactEmail: '',
     address: '',
     profileImageDataUrl: null,
+    professionalHeadline: '',
+    professionalSummary: '',
+    educationSummary: '',
+    experienceSummary: '',
+    professionalSkills: '',
   })
   const [saving, setSaving] = useState(false)
   const [updatingAccess, setUpdatingAccess] = useState(false)
@@ -63,6 +68,11 @@ export function UserProfilePage() {
             contactEmail: form.contactEmail,
             address: form.address,
             profileImageDataUrl: form.profileImageDataUrl,
+            professionalHeadline: form.professionalHeadline,
+            professionalSummary: form.professionalSummary,
+            educationSummary: form.educationSummary,
+            experienceSummary: form.experienceSummary,
+            professionalSkills: form.professionalSkills,
             ...(profile.ownerEditingAllowed
               ? { fullName: form.fullName, phone: form.phone, loginEmail: form.loginEmail }
               : {}),
@@ -192,6 +202,47 @@ export function UserProfilePage() {
       )}
       {profile && (
         <>
+          <section className="profile-overview-card" aria-label="Professional overview">
+            <div className="profile-overview-identity">
+              <div className="profile-overview-avatar">
+                {form.profileImageDataUrl ? (
+                  <img src={form.profileImageDataUrl} alt="" />
+                ) : (
+                  <span>{profile.fullName?.slice(0, 1).toUpperCase()}</span>
+                )}
+              </div>
+              <div>
+                <span className="profile-role-label">{profile.role.toLowerCase()}</span>
+                <h2>{profile.fullName}</h2>
+                <p>{profile.professionalHeadline || 'Add a short professional headline below.'}</p>
+              </div>
+            </div>
+            <p className="profile-overview-summary">
+              {profile.professionalSummary ||
+                'Share a concise introduction about your experience, interests, and goals.'}
+            </p>
+            <div className="profile-overview-details">
+              {profile.educationSummary && (
+                <div>
+                  <small>Education</small>
+                  <strong>{profile.educationSummary}</strong>
+                </div>
+              )}
+              {profile.experienceSummary && (
+                <div>
+                  <small>Experience</small>
+                  <strong>{profile.experienceSummary}</strong>
+                </div>
+              )}
+            </div>
+            {profile.professionalSkills && (
+              <div className="profile-skill-list" aria-label="Skills">
+                {profile.professionalSkills.split(',').map((skill) => (
+                  <span key={skill.trim()}>{skill.trim()}</span>
+                ))}
+              </div>
+            )}
+          </section>
           <form className="panel user-profile-form" onSubmit={save}>
             <aside className="profile-photo-editor">
               <div>
@@ -276,6 +327,69 @@ export function UserProfilePage() {
                   onChange={(event) => setForm({ ...form, address: event.target.value })}
                 />
               </label>
+              {!ownerMode && (
+                <>
+                  <div className="profile-section-heading profile-full-field">
+                    <span>Professional overview</span>
+                    <small>Keep it brief, clear, and focused on what you do.</small>
+                  </div>
+                  <label className="profile-full-field">
+                    Headline
+                    <input
+                      maxLength="160"
+                      placeholder="Example: Designer · Developer · Problem solver"
+                      value={form.professionalHeadline || ''}
+                      onChange={(event) =>
+                        setForm({ ...form, professionalHeadline: event.target.value })
+                      }
+                    />
+                  </label>
+                  <label className="profile-full-field">
+                    About me
+                    <textarea
+                      rows="4"
+                      maxLength="800"
+                      value={form.professionalSummary || ''}
+                      onChange={(event) =>
+                        setForm({ ...form, professionalSummary: event.target.value })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Education
+                    <textarea
+                      rows="3"
+                      maxLength="500"
+                      value={form.educationSummary || ''}
+                      onChange={(event) =>
+                        setForm({ ...form, educationSummary: event.target.value })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Experience
+                    <textarea
+                      rows="3"
+                      maxLength="700"
+                      value={form.experienceSummary || ''}
+                      onChange={(event) =>
+                        setForm({ ...form, experienceSummary: event.target.value })
+                      }
+                    />
+                  </label>
+                  <label className="profile-full-field">
+                    Skills
+                    <input
+                      maxLength="500"
+                      placeholder="Separate skills with commas"
+                      value={form.professionalSkills || ''}
+                      onChange={(event) =>
+                        setForm({ ...form, professionalSkills: event.target.value })
+                      }
+                    />
+                  </label>
+                </>
+              )}
               <label>
                 Role
                 <input value={profile.role} readOnly />

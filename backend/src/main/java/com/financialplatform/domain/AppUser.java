@@ -41,6 +41,21 @@ public class AppUser {
   @Column(name = "profile_image_data_url", columnDefinition = "text")
   private String profileImageDataUrl;
 
+  @Column(name = "professional_headline", length = 160)
+  private String professionalHeadline;
+
+  @Column(name = "professional_summary", length = 800)
+  private String professionalSummary;
+
+  @Column(name = "education_summary", length = 500)
+  private String educationSummary;
+
+  @Column(name = "experience_summary", length = 700)
+  private String experienceSummary;
+
+  @Column(name = "professional_skills", length = 500)
+  private String professionalSkills;
+
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "business_id", nullable = false, updatable = false)
   private Business business;
@@ -114,12 +129,50 @@ public class AppUser {
     return profileImageDataUrl;
   }
 
-  public void updateOwnProfile(String contactEmail, String address, String profileImageDataUrl) {
+  public String getProfessionalHeadline() {
+    return professionalHeadline;
+  }
+
+  public String getProfessionalSummary() {
+    return professionalSummary;
+  }
+
+  public String getEducationSummary() {
+    return educationSummary;
+  }
+
+  public String getExperienceSummary() {
+    return experienceSummary;
+  }
+
+  public String getProfessionalSkills() {
+    return professionalSkills;
+  }
+
+  public void updateOwnProfile(
+      String contactEmail,
+      String address,
+      String profileImageDataUrl,
+      String professionalHeadline,
+      String professionalSummary,
+      String educationSummary,
+      String experienceSummary,
+      String professionalSkills) {
     this.contactEmail =
         contactEmail == null || contactEmail.isBlank() ? email : contactEmail.trim().toLowerCase();
     this.address = address == null || address.isBlank() ? null : address.trim();
     this.profileImageDataUrl =
         profileImageDataUrl == null || profileImageDataUrl.isBlank() ? null : profileImageDataUrl;
+    this.professionalHeadline = optional(professionalHeadline, this.professionalHeadline);
+    this.professionalSummary = optional(professionalSummary, this.professionalSummary);
+    this.educationSummary = optional(educationSummary, this.educationSummary);
+    this.experienceSummary = optional(experienceSummary, this.experienceSummary);
+    this.professionalSkills = optional(professionalSkills, this.professionalSkills);
+  }
+
+  private String optional(String value, String currentValue) {
+    if (value == null) return currentValue;
+    return value.isBlank() ? null : value.trim();
   }
 
   public void updateOwnerControlledDetails(String fullName, String phone, String loginEmail) {

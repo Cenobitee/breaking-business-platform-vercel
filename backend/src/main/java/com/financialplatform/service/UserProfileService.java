@@ -23,7 +23,15 @@ public class UserProfileService {
   @Transactional
   public UserProfileResponse updateMe(UpdateOwnProfileRequest request, String email) {
     AppUser user = user(email);
-    user.updateOwnProfile(request.contactEmail(), request.address(), request.profileImageDataUrl());
+    user.updateOwnProfile(
+        request.contactEmail(),
+        request.address(),
+        request.profileImageDataUrl(),
+        request.professionalHeadline(),
+        request.professionalSummary(),
+        request.educationSummary(),
+        request.experienceSummary(),
+        request.professionalSkills());
     if (user.getRole() == Role.OWNER) {
       String fullName = request.fullName() == null ? user.getFullName() : request.fullName();
       String phone = request.phone() == null ? user.getPhone() : request.phone();
