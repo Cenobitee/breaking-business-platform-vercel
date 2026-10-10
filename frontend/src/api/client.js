@@ -2,6 +2,12 @@ const API_URL = import.meta.env.DEV
   ? (import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api')
   : '/api'
 
+const fallbackMessages = {
+  413: 'The upload is too large. Remove an image or choose smaller images and try again.',
+  502: 'The server is temporarily unavailable. Please try again in a moment.',
+  503: 'The server is starting or temporarily unavailable. Please try again in a moment.',
+}
+
 async function send(path, options = {}, allowRefresh = true) {
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
@@ -25,7 +31,11 @@ async function send(path, options = {}, allowRefresh = true) {
 
   if (!response.ok) {
     const body = await response.json().catch(() => null)
-    throw new Error(body?.message ?? `Request failed with status ${response.status}`)
+    throw new Error(
+      body?.message ??
+        fallbackMessages[response.status] ??
+        `Request failed with status ${response.status}`,
+    )
   }
 
   if (response.status === 204) return null

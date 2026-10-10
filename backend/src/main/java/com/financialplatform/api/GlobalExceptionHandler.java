@@ -4,9 +4,10 @@ import com.financialplatform.api.dto.ApiError;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -28,9 +29,17 @@ public class GlobalExceptionHandler {
     return response(HttpStatus.BAD_REQUEST, exception.getMessage(), Map.of());
   }
 
-  @ExceptionHandler(BadCredentialsException.class)
-  ResponseEntity<ApiError> badCredentials() {
+  @ExceptionHandler(AuthenticationException.class)
+  ResponseEntity<ApiError> authenticationFailed() {
     return response(HttpStatus.UNAUTHORIZED, "Invalid email or password", Map.of());
+  }
+
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  ResponseEntity<ApiError> dataConflict() {
+    return response(
+        HttpStatus.CONFLICT,
+        "This request conflicts with an existing record. Refresh the page and try again.",
+        Map.of());
   }
 
   private ResponseEntity<ApiError> response(

@@ -7,6 +7,16 @@ const money = (value) =>
   `৳${Number(value).toLocaleString('en-BD', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const percent = (value) => `${Number(value).toFixed(2)}%`
 const dateTime = (value) => (value ? new Date(value).toLocaleString('en-BD') : '—')
+const MAX_INVESTMENT_IMAGE_PAYLOAD_BYTES = 3_500_000
+const dataUrlBytes = (value) => {
+  const base64 = value?.split(',')[1] || ''
+  return Math.ceil(base64.length * 0.75)
+}
+const totalImageBytes = (images) => images.reduce((total, image) => total + dataUrlBytes(image), 0)
+const imagePayloadIsTooLarge = (images) =>
+  totalImageBytes(images) > MAX_INVESTMENT_IMAGE_PAYLOAD_BYTES
+const oversizedImageMessage =
+  'The combined images are too large. Remove an image or use smaller images and try again.'
 
 export function InvestorDashboard({ view = 'overview' }) {
   const { user } = useAuth()
@@ -164,8 +174,8 @@ export function InvestorDashboard({ view = 'overview' }) {
   function applyImageCrop() {
     const image = new Image()
     image.onload = () => {
-      const outputWidth = 1200
-      const outputHeight = 675
+      const outputWidth = 960
+      const outputHeight = 540
       const canvas = document.createElement('canvas')
       canvas.width = outputWidth
       canvas.height = outputHeight
@@ -177,7 +187,13 @@ export function InvestorDashboard({ view = 'overview' }) {
       const drawX = -(drawWidth - outputWidth) * (cropX / 100)
       const drawY = -(drawHeight - outputHeight) * (cropY / 100)
       context.drawImage(image, drawX, drawY, drawWidth, drawHeight)
-      const croppedImage = canvas.toDataURL('image/jpeg', 0.86)
+      const croppedImage = canvas.toDataURL('image/jpeg', 0.78)
+      const currentImages = cropTarget === 'new' ? newPackageImages : editingPackageImages
+      if (imagePayloadIsTooLarge([...currentImages, croppedImage])) {
+        setError(oversizedImageMessage)
+        advanceImageCropper()
+        return
+      }
       if (cropTarget === 'new') setNewPackageImages((images) => [...images, croppedImage])
       if (cropTarget === 'edit') setEditingPackageImages((images) => [...images, croppedImage])
       advanceImageCropper()
@@ -200,6 +216,10 @@ export function InvestorDashboard({ view = 'overview' }) {
   async function updatePackage(investmentPackage, form) {
     setError('')
     setNotice('')
+    if (imagePayloadIsTooLarge(editingPackageImages)) {
+      setError(oversizedImageMessage)
+      return
+    }
     try {
       await apiRequest(`/investments/packages/${investmentPackage.id}`, {
         method: 'PUT',
@@ -232,9 +252,13 @@ export function InvestorDashboard({ view = 'overview' }) {
   async function publishPackage(event) {
     event.preventDefault()
     const form = event.currentTarget
-    setPublishing(true)
     setError('')
     setNotice('')
+    if (imagePayloadIsTooLarge(newPackageImages)) {
+      setError(oversizedImageMessage)
+      return
+    }
+    setPublishing(true)
     try {
       await apiRequest('/investments/packages', {
         method: 'POST',
