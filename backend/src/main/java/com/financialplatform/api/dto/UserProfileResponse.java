@@ -11,11 +11,6 @@ public record UserProfileResponse(
     String phone,
     String address,
     String profileImageDataUrl,
-    String professionalHeadline,
-    String professionalSummary,
-    String educationSummary,
-    String experienceSummary,
-    String professionalSkills,
     Role role,
     boolean active,
     boolean ownerEditingAllowed) {
@@ -28,11 +23,6 @@ public record UserProfileResponse(
         user.getPhone(),
         user.getAddress(),
         user.getProfileImageDataUrl(),
-        user.getProfessionalHeadline(),
-        user.getProfessionalSummary(),
-        user.getEducationSummary(),
-        user.getExperienceSummary(),
-        user.getProfessionalSkills(),
         user.getRole(),
         user.isActive(),
         ownerEditingAllowed);
